@@ -51,21 +51,23 @@ export default function AgeVerificationPage() {
 
     setLoading(true);
     localStorage.setItem("ageVerified", "true");
+    // Set cookie token for middleware/SSR support
+    document.cookie = "age_token=verified_dusk_till_dawn; path=/; max-age=31536000";
 
     setTimeout(() => {
-      router.push("/dashboard");
+      router.push("/");
     }, 800);
   }
 
   return (
     <main className="min-h-screen px-5 py-8 relative overflow-hidden"
       style={{
-        background: "radial-gradient(ellipse at 30% 0%, #2D1060 0%, #0D0A1A 60%)",
+        background: "radial-gradient(ellipse at 30% 0%, rgba(229,169,74,0.1) 0%, #0B0B0C 60%)",
       }}
     >
       {/* BG orb */}
-      <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20 blur-3xl"
-        style={{ background: "radial-gradient(#7B2FFF, transparent)" }}
+      <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20 blur-3xl pointer-events-none"
+        style={{ background: "radial-gradient(#E5A94A, transparent)" }}
       />
 
       <div className="relative z-10 max-w-sm mx-auto">
@@ -78,17 +80,17 @@ export default function AgeVerificationPage() {
           <div className="pt-8">
             <div className="w-20 h-20 rounded-3xl flex items-center justify-center"
               style={{
-                background: "linear-gradient(135deg, rgba(0,196,140,0.2), rgba(0,130,179,0.2))",
-                border: "1px solid rgba(0,196,140,0.3)",
+                background: "linear-gradient(135deg, rgba(229,169,74,0.1), rgba(198,138,43,0.1))",
+                border: "1px solid rgba(229,169,74,0.3)",
               }}
             >
-              <ShieldCheck size={40} className="text-emerald-400" />
+              <ShieldCheck size={40} className="text-[#E5A94A]" />
             </div>
           </div>
 
           {/* Text */}
           <div>
-            <h1 className="text-3xl font-black">Age Verification</h1>
+            <h1 className="text-3xl font-black font-serif text-white">Age Verification</h1>
             <p className="mt-3 text-white/60 leading-relaxed text-sm">
               This app contains alcohol-related content. As per Indian law, you must be
               <span className="text-white font-semibold"> 21 years or older</span> to use this app.
@@ -96,7 +98,7 @@ export default function AgeVerificationPage() {
           </div>
 
           {/* DOB selectors */}
-          <div className="glass rounded-3xl p-5 space-y-4">
+          <div className="bg-[#141416] border border-white/5 rounded-3xl p-5 space-y-4 shadow-[0_0_20px_rgba(229,169,74,0.05)]">
             <p className="text-sm font-semibold text-white/50 uppercase tracking-wider">
               Date of Birth
             </p>
@@ -138,19 +140,19 @@ export default function AgeVerificationPage() {
           <label className="flex gap-3 cursor-pointer">
             <div
               onClick={() => setAccepted(!accepted)}
-              className={`w-6 h-6 rounded-lg flex-shrink-0 flex items-center justify-center border-2 transition-all mt-0.5 ${
+              className={`w-6 h-6 rounded-lg shrink-0 flex items-center justify-center border transition-all mt-0.5 ${
                 accepted
-                  ? "bg-gradient-to-br from-orange-500 to-pink-500 border-transparent"
-                  : "border-white/20"
+                  ? "bg-[#E5A94A] border-[#E5A94A]"
+                  : "border-white/20 bg-transparent"
               }`}
             >
-              {accepted && <span className="text-white text-xs font-black">✓</span>}
+              {accepted && <span className="text-black text-xs font-black">✓</span>}
             </div>
             <p className="text-sm text-white/60 leading-relaxed">
               I confirm that I am 21 years or older, and I agree to the{" "}
-              <span className="text-orange-400 underline cursor-pointer">Terms of Service</span>{" "}
+              <span className="text-[#E5A94A] underline cursor-pointer">Terms of Service</span>{" "}
               and{" "}
-              <span className="text-orange-400 underline cursor-pointer">Privacy Policy</span>.
+              <span className="text-[#E5A94A] underline cursor-pointer">Privacy Policy</span>.
             </p>
           </label>
 
@@ -162,7 +164,7 @@ export default function AgeVerificationPage() {
               className="flex gap-3 items-start rounded-2xl p-4"
               style={{ background: "rgba(255,59,48,0.12)", border: "1px solid rgba(255,59,48,0.2)" }}
             >
-              <AlertCircle size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
+              <AlertCircle size={18} className="text-red-400 shrink-0 mt-0.5" />
               <p className="text-sm text-red-300">{error}</p>
             </motion.div>
           )}
@@ -171,7 +173,7 @@ export default function AgeVerificationPage() {
           <button
             onClick={verify}
             disabled={loading}
-            className="btn-primary disabled:opacity-60"
+            className="w-full py-4 rounded-xl font-bold text-black bg-[#E5A94A] disabled:opacity-60 transition-opacity"
           >
             {loading ? "Verifying..." : "Confirm Age & Continue"}
           </button>

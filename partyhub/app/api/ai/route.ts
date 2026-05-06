@@ -1,32 +1,47 @@
 import { NextResponse } from "next/server";
+import { pricingData } from "@/lib/pricingData";
 
-async function callOpenRouter(system: string, user: string) {
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://cheersindia.app",
-      "X-Title": "Cheers India",
-    },
-    body: JSON.stringify({
-      model: process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini",
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      temperature: 0.7,
-      response_format: { type: "json_object" },
-    }),
-  });
+async function callOpenRouter(system: string, user: string, retries = 2): Promise<string> {
+  for (let i = 0; i <= retries; i++) {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://cheersindia.app",
+        "X-Title": "Cheers India",
+      },
+      body: JSON.stringify({
+        model: process.env.OPENROUTER_MODEL || "openai/gpt-oss-120b:free",
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+        temperature: 0.2,
+        // Removed response_format: { type: "json_object" } because it causes free models to return blank responses
+      }),
+    });
 
-  if (!res.ok) throw new Error(await res.text());
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content ?? "";
+    if (!res.ok) {
+      if (i === retries) throw new Error(await res.text());
+      continue;
+    }
+    
+    const data = await res.json();
+    const content = data.choices?.[0]?.message?.content ?? "";
+    
+    if (content.trim() !== "") {
+      return content;
+    }
+    
+    console.log(`DEBUG: AI returned blank response. Retrying... (${i+1}/${retries})`);
+  }
+  return "";
 }
 
 export async function POST(req: Request) {
   try {
+    console.log("DEBUG: API Key is:", process.env.OPENROUTER_API_KEY ? "Loaded (Starts with " + process.env.OPENROUTER_API_KEY.substring(0, 5) + "...)" : "UNDEFINED or EMPTY");
     const { task, payload } = await req.json();
 
     let system = "";
@@ -34,12 +49,28 @@ export async function POST(req: Request) {
 
     if (task === "party-planner") {
       system = `You are an expert Indian party planning assistant. Help plan parties for Indian audiences. 
-Use Indian alcohol brands like Old Monk, Royal Stag, McDowell's, Kingfisher, Bira, Sula Wines, etc.
-Use Indian food like chakna, biryani, tandoori, snacks, etc.
-Use Indian Rupee (₹) for all prices. 
-Encourage responsible drinking. Return ONLY valid JSON.`;
+Use Indian alcohol brands from the provided Pricing Data.
+Use specific Indian food names for chakna/snacks (e.g., Masala Peanuts, Kurkure, Paneer Tikka) instead of generic terms.
 
-      user = `Create an Indian party plan:
+CRITICAL PRICING & CALCULATION RULES:
+1. The user will provide their "state". You must lookup the state multiplier in the Pricing Data. 
+   - Example: finalPrice = basePrice * stateMultiplier
+2. Handle Dry States: If the user's state is in the 'dry_states' list (like bihar or gujarat), return a plan but set the drink prices to 0 and add a note that alcohol is restricted.
+3. Calculate bottles required using the consumption data:
+   - totalML = people * ml_per_person
+   - bottles = Math.ceil(totalML / bottle_size_ml)
+4. NEVER price any item at ₹0 unless it's a dry state. Soft drinks, mixers, and extras must have realistic costs.
+5. MATH RULE: The sum of drinks, food, and extras in budgetBreakdown MUST EXACTLY equal totalEstimatedCost.
+6. The user payload includes a "drinkSegment" (budget, mid, premium, luxury). Strictly suggest brands from the pricing data that match this segment.
+7. SIZING ADJUSTMENTS: If the budget is tight, suggest Quarters (180ml) or Halves (375ml) for spirits instead of Full (750ml) bottles, and estimate their prices proportionally (~25% or ~50% of 750ml price). For beer, suggest Pints (330ml) or Cans (500ml) instead of 650ml bottles.
+8. COCKTAILS: Generate 2-3 simple cocktail recipes using EXACTLY the alcohol brands and mixers you suggested in the drinkPlan and extras. Do not suggest cocktails that require alcohol not in your plan.
+
+PRICING DATA:
+${JSON.stringify(pricingData)}
+
+Encourage responsible drinking. Return ONLY valid JSON matching this exact structure:`;
+
+      user = `Create an Indian party plan for this payload:
 ${JSON.stringify(payload, null, 2)}
 
 Return this exact JSON:
@@ -56,7 +87,10 @@ Return this exact JSON:
     {"name": "", "quantity": "", "estimatedCost": 0}
   ],
   "safetyTips": ["tip1", "tip2"],
-  "budgetBreakdown": {"drinks": 0, "food": 0, "extras": 0}
+  "budgetBreakdown": {"drinks": 0, "food": 0, "extras": 0},
+  "cocktails": [
+    {"name": "", "base": "", "desc": ""}
+  ]
 }`;
     }
 

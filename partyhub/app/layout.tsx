@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
+import { ClerkProvider } from '@clerk/nextjs'
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Dusk Till Dawn 🌙",
   description: "Premium nightlife planning for India. Party smarter.",
-  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {
@@ -21,12 +21,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="antialiased overflow-x-hidden" style={{ background: "#0B0B0C" }}>
-        <div className="mx-auto max-w-[430px] min-h-screen relative">
-          {children}
-        </div>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body className="antialiased overflow-x-hidden" style={{ background: "#0B0B0C" }}>
+          <div className="mx-auto max-w-[430px] min-h-screen relative">
+            {children}
+          </div>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

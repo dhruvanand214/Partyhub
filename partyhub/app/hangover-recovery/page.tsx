@@ -9,6 +9,7 @@ import StepHeader from "@/components/custom/StepHeader";
 import MultiSelectChips from "@/components/custom/MultiSelectChips";
 import BottomCTA from "@/components/custom/BottomCTA";
 import BottomNav from "@/components/ui/BottomNav";
+import PaywallModal from "@/components/ui/PaywallModal";
 
 const steps = [
   { icon: "🤕", label: "Symptoms" },
@@ -22,6 +23,7 @@ const steps = [
 export default function HangoverRecoveryPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   const { recoveryData, updateRecoveryData, setPlanOutput, planOutput } = useAppStore();
 
   async function generatePlan() {
@@ -39,6 +41,12 @@ export default function HangoverRecoveryPage() {
       });
 
       const data = await res.json();
+      
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+      
       setPlanOutput(data.result || "Something went wrong");
       setStep(6);
     } catch {
@@ -66,9 +74,11 @@ export default function HangoverRecoveryPage() {
   };
 
   return (
-    <main className="min-h-screen pb-48 relative overflow-x-hidden text-white"
-      style={{ background: "radial-gradient(ellipse at 30% 0%, rgba(82,82,91,0.2) 0%, #0B0B0C 60%)" }}
-    >
+    <>
+      <PaywallModal isOpen={showPaywall} onClose={() => setShowPaywall(false)} />
+      <main className="min-h-screen pb-48 relative overflow-x-hidden text-white"
+        style={{ background: "radial-gradient(ellipse at 30% 0%, rgba(82,82,91,0.2) 0%, #0B0B0C 60%)" }}
+      >
       <div className="relative z-10 px-5 pt-14 space-y-6">
         <StepHeader title="Recovery Mode" onBack={() => step > 1 ? setStep(step - 1) : null} />
         
@@ -384,5 +394,6 @@ export default function HangoverRecoveryPage() {
       />
       <BottomNav />
     </main>
+    </>
   );
 }

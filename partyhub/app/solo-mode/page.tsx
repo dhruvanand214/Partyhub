@@ -10,6 +10,7 @@ import SliderInput from "@/components/custom/SliderInput";
 import MultiSelectChips from "@/components/custom/MultiSelectChips";
 import BottomCTA from "@/components/custom/BottomCTA";
 import BottomNav from "@/components/ui/BottomNav";
+import PaywallModal from "@/components/ui/PaywallModal";
 
 const steps = [
   { icon: "😌", label: "Mood" },
@@ -23,6 +24,7 @@ const steps = [
 export default function SoloModePage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   const { soloData, updateSoloData, setPlanOutput, planOutput } = useAppStore();
 
   async function generatePlan() {
@@ -40,6 +42,12 @@ export default function SoloModePage() {
       });
 
       const data = await res.json();
+      
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+      
       setPlanOutput(data.result || "Something went wrong");
       setStep(6);
     } catch {
@@ -67,9 +75,11 @@ export default function SoloModePage() {
   };
 
   return (
-    <main className="min-h-screen pb-48 relative overflow-x-hidden text-white"
-      style={{ background: "radial-gradient(ellipse at 20% 0%, rgba(90,15,46,0.15) 0%, #0B0B0C 60%)" }}
-    >
+    <>
+      <PaywallModal isOpen={showPaywall} onClose={() => setShowPaywall(false)} />
+      <main className="min-h-screen pb-48 relative overflow-x-hidden text-white"
+        style={{ background: "radial-gradient(ellipse at 20% 0%, rgba(90,15,46,0.15) 0%, #0B0B0C 60%)" }}
+      >
       <div className="relative z-10 px-5 pt-14 space-y-6">
         <StepHeader title="Solo Mode" onBack={() => step > 1 ? setStep(step - 1) : null} />
         
@@ -345,5 +355,6 @@ export default function SoloModePage() {
       />
       <BottomNav />
     </main>
+    </>
   );
 }

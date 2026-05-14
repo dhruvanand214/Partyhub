@@ -1,38 +1,41 @@
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
-  // Check if the user has the age verification token
+const isPublicRoute = createRouteMatcher([
+  '/', 
+  '/age-verification',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/api/webhook/clerk'
+]);
+
+export default clerkMiddleware(async (auth, request) => {
+  // 1. Strict Age Verification Logic
   const hasToken = request.cookies.has('age_token');
-  
-  // Skip middleware for static files, API routes, and the verification page itself
   const isVerificationPage = request.nextUrl.pathname.startsWith('/age-verification');
-  const isStaticAsset = request.nextUrl.pathname.startsWith('/_next') || 
-                        request.nextUrl.pathname.includes('.') ||
-                        request.nextUrl.pathname.startsWith('/api');
-
-  if (!hasToken && !isVerificationPage && !isStaticAsset) {
-    // Redirect unverified users to the age verification page
+  const isWebhook = request.nextUrl.pathname.includes('/api/webhook');
+  
+  // If they don't have an age token, and they aren't on the verification page or a backend webhook,
+  // FORCE them to the age verification page. This protects /sign-in and /sign-up as well.
+  if (!hasToken && !isVerificationPage && !isWebhook) {
     return NextResponse.redirect(new URL('/age-verification', request.url));
   }
 
-  // If verified but trying to access age-verification, redirect to home
+  // If they already verified but try to go back to the verification page, send them home
   if (hasToken && isVerificationPage) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  return NextResponse.next();
-}
+  // 2. Clerk Authentication Logic
+  // Only protect routes that are not explicitly marked as public
+  if (!isPublicRoute(request)) {
+    await auth.protect();
+  }
+});
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico, logo.png (static assets)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico|logo.png).*)',
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
   ],
 };

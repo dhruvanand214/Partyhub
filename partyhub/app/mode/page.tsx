@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { UserButton } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
@@ -58,7 +59,7 @@ export default function ModePage() {
 
   return (
     <main
-      className="min-h-screen flex flex-col pb-32"
+      className="min-h-screen flex flex-col pb-48"
       style={{
         background:
           "radial-gradient(ellipse at 50% 0%, #1A0A04 0%, #0B0B0C 60%)",
@@ -75,27 +76,36 @@ export default function ModePage() {
 
       <div className="relative z-10 px-5 pt-14">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
-          <motion.button
-            whileTap={{ scale: 0.88 }}
-            onClick={() => router.back()}
-            className="w-9 h-9 rounded-full flex items-center justify-center"
-            style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.1)",
-            }}
-          >
-            <ChevronLeft size={18} className="text-white/80" />
-          </motion.button>
-          <div>
-            <h1
-              className="text-xl font-bold text-white"
-              style={{ fontFamily: "Playfair Display, serif" }}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <motion.button
+              whileTap={{ scale: 0.88 }}
+              onClick={() => router.back()}
+              className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.1)",
+              }}
             >
-              Choose Your Mode
-            </h1>
-            <p className="text-xs text-[#A1A1AA] mt-0.5">What's the plan for tonight?</p>
+              <ChevronLeft size={18} className="text-white/80" />
+            </motion.button>
+            <div>
+              <h1
+                className="text-xl font-bold text-white"
+                style={{ fontFamily: "Playfair Display, serif" }}
+              >
+                Choose Your Mode
+              </h1>
+              <p className="text-xs text-[#A1A1AA] mt-0.5">What's the plan for tonight?</p>
+            </div>
           </div>
+          <UserButton 
+            appearance={{
+              elements: {
+                userButtonAvatarBox: "w-9 h-9 border border-white/10"
+              }
+            }}
+          />
         </div>
 
         {/* Mode cards */}
@@ -203,6 +213,7 @@ export default function ModePage() {
         label="Continue"
         onClick={handleContinue}
         disabled={!selected}
+        className="bottom-24"
       />
       <BottomNav />
     </main>

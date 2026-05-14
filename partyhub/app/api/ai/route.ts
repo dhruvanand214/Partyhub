@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import connectToDatabase from "@/lib/db";
+import User from "@/models/User";
+import PartyPlan from "@/models/PartyPlan";
 import { pricingData } from "@/lib/pricingData";
 
 async function callOpenRouter(system: string, user: string, retries = 2): Promise<string> {
@@ -41,8 +45,35 @@ async function callOpenRouter(system: string, user: string, retries = 2): Promis
 
 export async function POST(req: Request) {
   try {
-    console.log("DEBUG: API Key is:", process.env.OPENROUTER_API_KEY ? "Loaded (Starts with " + process.env.OPENROUTER_API_KEY.substring(0, 5) + "...)" : "UNDEFINED or EMPTY");
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { task, payload } = await req.json();
+
+    let userRecord = null;
+    
+    // We only track limits and save plans for actual generation tasks
+    const isPlanTask = ["party-planner", "solo-mode", "hangover-recovery"].includes(task);
+
+    if (isPlanTask) {
+      await connectToDatabase();
+      userRecord = await User.findOne({ clerkId });
+      
+      if (!userRecord) {
+        // Failsafe in case webhook was delayed or failed
+        userRecord = new User({ clerkId, email: "unknown@user.com", planType: "FREE" });
+        await userRecord.save();
+      }
+
+      if (userRecord.planType === "FREE" && userRecord.monthlyGenerations >= 3) {
+        return NextResponse.json(
+          { error: "Monthly limit reached", code: "PAYMENT_REQUIRED" },
+          { status: 402 }
+        );
+      }
+    }
 
     let system = "";
     let user = "";
@@ -170,7 +201,38 @@ Return this JSON:
     }
 
     const result = await callOpenRouter(system, user);
-    return NextResponse.json({ result });
+    
+    let parsedResult;
+    try {
+      parsedResult = JSON.parse(result);
+    } catch (e) {
+      // If AI fails to return valid JSON, don't count it against the limit
+      return NextResponse.json({ error: "AI returned malformed data. Please try again." }, { status: 500 });
+    }
+
+    if (isPlanTask && userRecord) {
+      try {
+        // Save the plan to the database
+        const newPlan = new PartyPlan({
+          userId: userRecord._id,
+          clerkId: userRecord.clerkId,
+          type: task === "party-planner" ? "PARTY" : task === "solo-mode" ? "SOLO" : "RECOVERY",
+          data: parsedResult,
+        });
+        await newPlan.save();
+
+        // Increment usage limits
+        userRecord.monthlyGenerations += 1;
+        userRecord.lastGenerationDate = new Date();
+        userRecord.savedPlans.push(newPlan._id);
+        await userRecord.save();
+      } catch (dbError) {
+        console.error("Error saving plan to DB:", dbError);
+        // We still return the plan to the user even if DB save fails
+      }
+    }
+
+    return NextResponse.json({ result: JSON.stringify(parsedResult) });
   } catch (err: any) {
     console.error("AI Error:", err);
     return NextResponse.json({ error: err.message || "AI failed" }, { status: 500 });

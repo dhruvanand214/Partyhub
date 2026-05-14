@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, Save, Sparkles, AlertTriangle, ChevronRight, Plus, Users, DollarSign, Wine, Sandwich, Check, Utensils, Star, Info, TrendingUp, GlassWater, Shield, Pen, User, Wallet, Calendar, Gift, ArrowRight, Share, Download } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import BottomNav from "@/components/ui/BottomNav";
+import PaywallModal from "@/components/ui/PaywallModal";
 
 const stepsList = [
   { id: 1, icon: Users, label: "People" },
@@ -40,6 +41,7 @@ export default function PartyPlannerPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showBudgetDetails, setShowBudgetDetails] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   const [aiPlan, setAiPlan] = useState<any>(null);
   const { partyData, updatePartyData } = useAppStore();
 
@@ -51,9 +53,16 @@ export default function PartyPlannerPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ task: "party-planner", payload: partyData }),
       });
-      if (!res.ok) throw new Error("API Request Failed");
       
       const data = await res.json();
+      
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+      
+      if (!res.ok) throw new Error(data.error || "API Request Failed");
+      
       let jsonString = data.result;
       if (jsonString.startsWith("```")) {
         jsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
@@ -99,7 +108,9 @@ export default function PartyPlannerPage() {
   const extrasPct = aiPlan ? Math.round(((aiPlan.budgetBreakdown.extras || 0) / Math.max(1, aiTotalCost)) * 100) : 0;
 
   return (
-    <main className="min-h-screen pb-48 bg-[#0B0B0C] text-white overflow-x-hidden font-sans">
+    <>
+      <PaywallModal isOpen={showPaywall} onClose={() => setShowPaywall(false)} />
+      <main className="min-h-screen pb-48 bg-[#0B0B0C] text-white overflow-x-hidden font-sans">
       <div className="px-5 pt-12">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -644,5 +655,6 @@ export default function PartyPlannerPage() {
 
       <BottomNav />
     </main>
+    </>
   );
 }
